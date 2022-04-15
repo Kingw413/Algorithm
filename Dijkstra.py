@@ -13,7 +13,7 @@ def Dijkstra(graph, startVertex):
                 result[i] = result[idx] + graph[idx][i]
     print(result)
 
-inf = 10000
+inf = float('inf')
 graph = [[0, 1, 12, inf, inf, inf],
           [inf, 0, 9, 3, inf, inf],
           [inf, inf, 0, inf, 5, inf],
