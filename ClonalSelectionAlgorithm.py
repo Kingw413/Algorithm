@@ -104,17 +104,21 @@ ax1 = plt.subplot(1,2,1)
 plt.plot(shortestLength)
 plt.xlabel('iter_times')
 plt.ylabel('shortest Length')
-plt.title('shortest length')
+plt.title('shortest length: %f'%shortestLength[-1])
 
 #图2：迭代完成后的最短路径
 ax2 = plt.subplot(1,2,2)
 #依次作出路径上相邻两点
 for i in range(N_city-1):
     plt.plot([cities[shortestPath[i],0],cities[shortestPath[i+1],0]], [cities[shortestPath[i],1],cities[shortestPath[i+1],1]],'bo-')
+    plt.text(cities[shortestPath[i],0]+40, cities[shortestPath[i],1]+40, shortestPath[i], ha='center', va='bottom', fontsize=10)
+
 #从终点回到起点
 plt.plot([cities[shortestPath[-1],0],cities[shortestPath[0],0]], [cities[shortestPath[-1],1],cities[shortestPath[0],1]],'r')
-plt.xlabel('x_axis')
-plt.ylabel('y_axis')
-plt.title('shortest path: ')
+plt.text(cities[shortestPath[-1],0]+40, cities[shortestPath[-1],1]+40,shortestPath[-1], ha='center', va='bottom', fontsize=10)
+plt.xlabel('x')
+plt.ylabel('y')
+plt.title('shortest path')
 plt.show()
 print('shortest length: ', shortestLength[-1])
+print('final path：',shortestPath)

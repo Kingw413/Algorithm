@@ -40,7 +40,7 @@ rho = 0.5 #信息素的挥发速度
 Q = 1 #完成率
 
 iter = 0 #迭代初始
-itermax = 50 #迭代次数
+itermax = 100 #迭代次数
 
 DistMat = getDistMat(cities)
 pheromone_tab = np.ones([N_city, N_city])
@@ -50,11 +50,11 @@ path_tab = np.zeros([N_ant, N_city]).astype(int)
 length_aver = np.zeros(itermax)   #初始化每次迭代的平均路径长度
 length_best = np.zeros(itermax)   #初始化每次迭代的最短路径长度
 path_best = np.zeros([itermax, N_city])  #初始化每次迭代的最短路径
-length = np.zeros(N_ant)
 
 while iter<itermax:
     #蚂蚁起始城市
     path_tab[:, 0] = distributeAnt(N_ant, N_city)
+    length = np.zeros(N_ant)
 
     #计算每只蚂蚁转移到下一个城市的概率
     for i in range(N_ant):
@@ -81,7 +81,7 @@ while iter<itermax:
             length[i] += DistMat[passing][next_city]
             passing = next_city
         length[i] += DistMat[passing][path_tab[i][0]]
-    length_aver = length.mean()
+    length_aver[iter] = length.mean()
 
     #更新信息素
     updatephero_tab = np.zeros([N_city, N_city])
@@ -116,30 +116,26 @@ axes[0].set_xlabel('iter times')
 axes[1].plot(length_best)
 axes[1].set_title('Shortest Length')
 axes[1].set_xlabel('iter times')
-plt.close()
-fig.show()
 
 bestpath = path_best[-1]
 fig2 = plt.figure(2)
-plt.plot(cities[:, 0], cities[:, 1], 'r.')
-plt.xlim([-100, 2000])
-# x范围
-plt.ylim([-100, 1500])
-# y范围
+# plt.plot(cities[:, 0], cities[:, 1], 'r.')
+# plt.xlim([-100, 2000])
+# # x范围
+# plt.ylim([-100, 1500])
+# # y范围
 
 for i in range(N_city - 1):
     # 按坐标绘出最佳两两城市间路径
     m, n = int(bestpath[i]), int(bestpath[i + 1])
-    print("best_path:", m, n)
-    plt.plot([cities[m][0], cities[n][0]], [cities[m][1], cities[n][1]], 'k')
+    plt.plot([cities[m][0], cities[n][0]], [cities[m][1], cities[n][1]], 'bo-')
 
 plt.plot([cities[int(bestpath[0])][0], cities[int(bestpath[-1])][0]],
-         [cities[int(bestpath[0])][1], cities[int(bestpath[-1])][1]], 'b')
+         [cities[int(bestpath[0])][1], cities[int(bestpath[-1])][1]], 'r')
 
 ax = plt.gca()
 ax.set_title("Best Path")
 ax.set_xlabel('X_axis')
 ax.set_ylabel('Y_axis')
-plt.close()
-fig.show()
+plt.show()
 
