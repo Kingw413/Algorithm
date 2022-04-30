@@ -3,6 +3,7 @@ import random
 import matplotlib.pyplot as plt
 from numpy import ndarray
 
+
 #函数：计算城市间的距离矩阵
 def getDistMat(Cities):
     #城市个数
@@ -41,7 +42,7 @@ cities = np.array([[1304,2312],[3639,1315],[4177,2244],[3712,1399],[3488,1535],[
     [3394,2643],[3439, 3201],[2935, 3240],[3140 ,3550],[2545 ,2357],[2778, 2826],
     [2370, 2975]])
 
-N_city = cities.shape[0]
+N_city = cities.shape[0] #城市个数
 Np = 200  #种群个数
 N_gen = 1000 #迭代次数
 N_clone = 10  #克隆个数
@@ -58,9 +59,9 @@ sortedPaths = Paths[sortedIndex]                 #对各个种群的路径表按
 shortestLength = np.zeros(N_gen)            #存放每次迭代的最短路径长度
 shortestPath = np.zeros(N_city).astype(int)
 while iter_times<N_gen:
-    variaLengths = np.zeros(int(Np / 2))
-    variaPaths = np.zeros([int(Np / 2), N_city]).astype(int)
-
+    variaLengths = np.zeros(int(Np / 2))   #存放变异后的挑选出的种群的路径总长度
+    variaPaths = np.zeros([int(Np / 2), N_city]).astype(int)   #存放变异后挑选出的种群的路径
+    #对选出的优质种群进行克隆变异再选择
     for i in range(int(Np/2)):
         selectedPath = sortedPaths[i,:]  #选出前Np/2个种群作为优质种群
         clonalPath = np.tile(selectedPath, [N_clone,1])   #对选出的各个种群克隆N_clone份
@@ -84,29 +85,33 @@ while iter_times<N_gen:
         newLengths[i] = caculateLength(newPaths[i, :])  # 计算新种群所选路径的长度
 
     #克隆选择的种群与随机生成的新种群合并
-    finalPath = np.vstack([variaPaths, newPaths])
-    finalLengths = np.hstack([variaLengths, newLengths])
+    finalPath = np.vstack([variaPaths, newPaths])          #最终的各种群路径
+    finalLengths = np.hstack([variaLengths, newLengths])   #最终各种群路径的总长度
 
     sortedLengths = np.sort(finalLengths)
     sortedIndex = np.argsort(finalLengths)
     sortedPaths = finalPath[sortedIndex]
 
-    shortestLength[iter_times] = sortedLengths[0]
-    shortestPath = sortedPaths[0]
+    shortestLength[iter_times] = sortedLengths[0]          #每次迭代的最短路径长度
+    shortestPath = sortedPaths[0]                          #每次迭代的最短路径
 
     iter_times +=1
 
 #作图
 fig = plt.figure(1)
+#图1：随着迭代次数最短路径长度的变化
 ax1 = plt.subplot(1,2,1)
 plt.plot(shortestLength)
 plt.xlabel('iter_times')
 plt.ylabel('shortest Length')
 plt.title('shortest length')
 
+#图2：迭代完成后的最短路径
 ax2 = plt.subplot(1,2,2)
+#依次作出路径上相邻两点
 for i in range(N_city-1):
     plt.plot([cities[shortestPath[i],0],cities[shortestPath[i+1],0]], [cities[shortestPath[i],1],cities[shortestPath[i+1],1]],'bo-')
+#从终点回到起点
 plt.plot([cities[shortestPath[-1],0],cities[shortestPath[0],0]], [cities[shortestPath[-1],1],cities[shortestPath[0],1]],'r')
 plt.xlabel('x_axis')
 plt.ylabel('y_axis')
