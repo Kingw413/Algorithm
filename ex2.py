@@ -9,5 +9,8 @@ overhead_BC = BC(edges, 'B','F', 15)
 x = [10+10*k for k in range(15)]
 plt.plot(x,overhead_AC,'ro-')
 plt.plot(x,overhead_BC,'gs-')
+plt.xlabel('Number of Interests')
+plt.ylabel('overhead_ratio')
+plt.title('AC VS BC')
 plt.legend(['AC','BC'])
 plt.show()
