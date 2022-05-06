@@ -8,6 +8,7 @@ from ACupdate import isoverload
 from ACupdate import insertPIT
 from ACupdate import plot_result
 
+
 def BC(edges, Consumer, Producer, iter_times):
     # 全局化生存时间、最大负载、consumer、producer、拓扑图参数
     global TTL, overhead_max, consumer, producer, G
