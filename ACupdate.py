@@ -46,6 +46,7 @@ def ACO(edges, Consumer, Producer, iter_times):
 # 函数：初始化各个节点的CS、PIT、FIB表
 def initial(edges):
     G = nx.Graph()
+    # 生成网络图
     G.add_edges_from(edges)
     for node in G.nodes:
         G.nodes[node]['CS'] = []
