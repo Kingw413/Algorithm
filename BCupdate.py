@@ -10,7 +10,7 @@ from ACupdate import plot_result
 from ACupdate import receiveData
 from ACupdate import sendData
 
-def BC(edges, Consumer, Producer, iter_times):
+def BC(edges, Consumer, Producer):
     # 全局化生存时间、最大负载、consumer、producer、拓扑图参数
     global TTL, overhead_max, consumer, producer, G
     TTL = 100
@@ -55,4 +55,4 @@ def BC(edges, Consumer, Producer, iter_times):
     return overhead_ratios
 
 # edges = [('A','B'),('A','C'),('B','D'),('B','E'),('C','E'),('C','F'),('D','G'),('E','G'),('F','G')]
-# overhead_BC = BC(edges, 'B','F', 15)
+# overhead_BC = BC(edges, 'B','F')
