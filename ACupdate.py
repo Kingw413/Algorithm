@@ -6,7 +6,7 @@ import networkx as nx
 def ACO(edges, Consumer, Producer, iter_times):
     # 全局化生存时间、最大负载、consumer、producer、拓扑图参数
     global TTL, overhead_max, consumer, producer, G
-    TTL = 100
+    TTL = 200
     overhead_max = 200
     consumer = Consumer
     producer = Producer
@@ -15,31 +15,39 @@ def ACO(edges, Consumer, Producer, iter_times):
     # 计算全局路由,从而为每个节点生成FIB表
     caculateRoute(G, consumer, producer)
     overhead_ratios = []
-    N_packet_lists = [10+10*k for k in range(iter_times)] # 发送的包的总数
-    for N_packet in N_packet_lists:
-        for i in range(N_packet):
-            time = i            # 当前时间
-            node = consumer     # 当前节点
-            path = [consumer]   # 已经走过的节点路径
-            interest = 'HIT/'+str(np.random.randint(1000))  # 随机生成兴趣包
-            while node != producer:
-                # 贪心地选出下一跳
-                next_node, path = choose_next(G, node, path)
-                # 删除超时的PIT表项
-                del_expiredPIT(G, node, time, TTL)
-                # 判断PIT是否超载，如果是做出相应操作
-                isoverload(G, node, overhead_max)
-                # 添加新的PIT表项
-                insertPIT(G, interest, time, next_node)
-                # 更新节点的FIB表项
-                updateFIB(G, node, next_node)
-                node = next_node
-                time = G.nodes[next_node]['PIT'][interest]
-        # 计算平均负载
-        overhead_ratio = caculate_overhead(G, consumer, producer, overhead_max)
-        overhead_ratios.append(overhead_ratio)
+    #N_packet_lists=[4]
+    #N_packet_lists = [10+10*k for k in range(iter_times)] # 发送的包的总数
+    #for N_packet in N_packet_lists:
+    N_packet = 200
+    times = [x for x in range(int(N_packet/10))]
+    for i in range(N_packet):
+        time = i / 10  # 当前时间
+        now_node = consumer  # 当前节点
+        path = [consumer]  # 已经走过的节点路径
+        interest = 'HIT/' + str(np.random.randint(1000))  # 随机生成兴趣包
+        for node in G.nodes:
+            receiveData(G, node, time)
+        while now_node != producer:
+            # 贪心地选出下一跳
+            next_node, path = choose_next(G, now_node, path)
+            # 删除超时的PIT表项
+            del_expiredPIT(G, next_node, time, TTL)
+            # 判断PIT是否超载，如果是做出相应操作
+            isoverload(G, next_node, overhead_max)
+            # 添加新的PIT表项
+            insertPIT(G, interest, time, next_node)
+            # 更新节点的FIB表项
+            updateFIB(G, now_node, next_node)
+            now_node = next_node
+            time = G.nodes[next_node]['PIT'][interest][0]
+        sendData(G, interest, time, path, consumer)
+        if i % 10 == 0:
+            # 计算平均负载
+            overhead_ratio = caculate_overhead(G, consumer, producer, overhead_max)
+            overhead_ratios.append(overhead_ratio)
+
     # 作图
-    plot_result(N_packet_lists, overhead_ratios, 'AC')
+    plot_result(times, overhead_ratios, 'AC')
     return overhead_ratios
 
 
@@ -79,11 +87,12 @@ def choose_next(G, node, path):
     path.append(next_node)
     return next_node, path
 
+
 # 函数：检查并删除超时的PIT请求
 def del_expiredPIT(G, node, time, TTL):
     timeout_interest = []
     for key in G.nodes[node]['PIT'].keys():
-        if G.nodes[node]['PIT'][key] + TTL < time:
+        if G.nodes[node]['PIT'][key][0] + TTL < time:
             timeout_interest.append(key)
     for out_interest in timeout_interest:
         G.nodes[node]['PIT'].pop(out_interest)
@@ -93,8 +102,18 @@ def del_expiredPIT(G, node, time, TTL):
 def isoverload(G, node, overhead_max):
     if node != 'F' and len(G.nodes[node]['PIT']) >= overhead_max:
         # 找到PIT表中存在时间最旧的请求，将其删除
-        oldest_interest = min(G.nodes[node]['PIT'], key=lambda k: G.nodes[node]['PIT'][k])
+        oldest_interest = min(G.nodes[node]['PIT'], key=lambda k: G.nodes[node]['PIT'][k][0])
         G.nodes[node]['PIT'].pop(oldest_interest)
+
+
+# 函数：删除收到返回Data的相应PIT请求
+def receiveData(G, node, time):
+    received = []
+    for interest, times in G.nodes[node]['PIT'].items():
+        if time >= times[1]:
+            received.append(interest)
+    for received_interest in received:
+        G.nodes[node]['PIT'].pop(received_interest)
 
 
 # 函数：更新PIT表项
@@ -102,16 +121,30 @@ def insertPIT(G, interest, time, node):
     # 首先查询是否已经有相同请求
     if interest in G.nodes[node]['PIT']:
         # 判断相同请求的时间先后，更新请求的最新时间
-        if G.nodes[node]['PIT'][interest] < time+0.5:
-            G.nodes[node]['PIT'][interest] = time + 0.5
+        if G.nodes[node]['PIT'][interest][0] < time+0.5:
+            G.nodes[node]['PIT'][interest][0] = time + 0.5
     # 如果没有相同请求，则添加新的PIT表项
     else:
-        G.nodes[node]['PIT'][interest] = time + 0.5
+        G.nodes[node]['PIT'][interest] = [time + 0.5]
 
 
 # 函数：更新FIB表项
 def updateFIB(G, node, next_node):
     G.nodes[node]['FIB'][next_node] = 1 - len(G.nodes[next_node]['PIT']) / overhead_max
+
+
+# 函数：producer沿着原路返回Data
+def sendData(G, interest, time, path, consumer):
+    path1 = path.copy()
+    path1.remove(consumer)
+    for node in path1:
+        k = path1.index(node)
+        receive_time = time + 0.5*(len(path1)-1-k)
+        if len(G.nodes[node]['PIT'][interest])>1:
+            if G.nodes[node]['PIT'][interest][1] > receive_time:
+                G.nodes[node]['PIT'][interest][1] = receive_time
+        else:
+            G.nodes[node]['PIT'][interest].append(receive_time)
 
 
 # 函数：计算平均负载
@@ -128,7 +161,13 @@ def caculate_overhead(G, consumer, producer, overhead_max):
 # 函数：作图
 def plot_result(N_packet_lists, overhead_ratios, filename):
     plt.plot(N_packet_lists, overhead_ratios, 'bo-')
+    # xticks = np.arange(0,20,1)
+    # plt.xticks(xticks)
     plt.xlabel('Number of Interests')
     plt.ylabel('overhead_ratio')
     plt.title(filename)
     plt.show()
+
+
+# edges = [('A','B'),('A','C'),('B','D'),('B','E'),('C','E'),('C','F'),('D','G'),('E','G'),('F','G')]
+# overhead_AC = ACO(edges, 'B', 'F', 15)
