@@ -6,7 +6,7 @@ import networkx as nx
 def ACO(edges, Consumer, Producer):
     # 全局化生存时间、最大负载、consumer、producer、拓扑图参数
     global TTL, overhead_max, consumer, producer, G, alpha, beta, gamma
-    TTL = 200
+    TTL = 20
     overhead_max = 200
     consumer = Consumer
     producer = Producer
@@ -14,21 +14,22 @@ def ACO(edges, Consumer, Producer):
     beta = 0.2
     gamma = 0.1
     # 初始化拓扑图中各个节点的表项
-    G = initial(edges)
+    G = initial(edges,consumer)
     # 计算全局路由,从而为每个节点生成FIB表
     caculateRoute(G, consumer, producer)
     overhead_ratios = []
+    aver_delays=[]
     #N_packet_lists=[4]
     #N_packet_lists = [10+10*k for k in range(iter_times)] # 发送的包的总数
     #for N_packet in N_packet_lists:
-    N_packet = 200
-    times = [x for x in range(int(N_packet/10))]
+    N_packet = 2000
+    times = [x for x in range(int(N_packet/100))]
     for i in range(N_packet):
-        time = i / 10  # 当前时间
+        time = i / 100  # 当前时间
         now_node = consumer  # 当前节点
         path = [consumer]  # 已经走过的节点路径
         interest = 'HIT/' + str(np.random.randint(1000))  # 随机生成兴趣包
-
+        G.nodes[consumer]['Interest'][interest] = [time]
         while now_node != producer:
             # 检查每个节点的PIT表，删除已经接收到返回Data的请求
             for node in G.nodes:
@@ -49,35 +50,43 @@ def ACO(edges, Consumer, Producer):
             # 判断PIT是否超载，如果是做出相应操作
             #isoverload(G, next_node, overhead_max)
             # 添加新的PIT表项
-            insertPIT(G, interest, time, next_node)
+            insertPIT(G, interest, time, now_node, next_node)
             # 更新节点的FIB表项
             # updateFIB(G, now_node, next_node)
             now_node = next_node
             time = G.nodes[next_node]['PIT'][interest][0]
         sendData(G, interest, time, path, consumer)
-        if i % 10 == 0:
+        if i % 100 == 0:
             # 计算平均负载
             overhead_ratio = caculate_overhead(G, consumer, producer, overhead_max)
             overhead_ratios.append(overhead_ratio)
+            aver_delay = caculate_delay(G, consumer)
+            aver_delays.append(aver_delay)
+
 
     # 作图
-    plot_result(times, overhead_ratios, 'AC')
-    return overhead_ratios
+    plot_result(times, overhead_ratios, aver_delays, 'AC')
+    return overhead_ratios,aver_delays
 
 
 # 函数：初始化各个节点的CS、PIT、FIB表
-def initial(edges):
+def initial(edges,consumer):
     G = nx.Graph()
     # 生成网络图
     G.add_edges_from(edges)
     for node in G.nodes:
-        G.nodes[node]['CS'] = []
-        G.nodes[node]['PIT'] = {}
-        G.nodes[node]['FIB'] = {}
+        if node == consumer:
+            G.nodes[node]['PIT']={}
+            G.nodes[node]['FIB']={}
+            G.nodes[node]['Interest']={}
+        else:
+            G.nodes[node]['CS'] = []
+            G.nodes[node]['PIT'] = {}
+            G.nodes[node]['FIB'] = {}
     # 随机生成各节点间链路的时延、丢失率
     for edge in G.edges:
         G.edges[edge]['load'] = 0
-        G.edges[edge]['delay'] = np.random.uniform(1, 5)
+        G.edges[edge]['delay'] = np.random.uniform(0.001, 0.01)
         G.edges[edge]['loss'] = np.random.uniform(0.1, 0.5)
     return G
 
@@ -137,17 +146,18 @@ def receiveData(G, node, time):
 
 
 # 函数：更新PIT表项
-def insertPIT(G, interest, time, node):
+def insertPIT(G, interest, time, now_node, next_node):
     # 首先查询是否已经有相同请求
-    if interest in G.nodes[node]['PIT']:
+    delay = G.edges[now_node,next_node]['delay']
+    if interest in G.nodes[next_node]['PIT']:
         # 判断相同请求的时间先后，更新请求的最新时间
-        if G.nodes[node]['PIT'][interest][0] < time+0.5:
-            G.nodes[node]['PIT'][interest][0] = time + 0.5
+        if G.nodes[next_node]['PIT'][interest][0] < time + delay:
+            G.nodes[next_node]['PIT'][interest][0] = time + delay
     # 如果没有相同请求，则添加新的PIT表项
     else:
-        G.nodes[node]['PIT'][interest] = [time + 0.5]
+        G.nodes[next_node]['PIT'][interest] = [time + delay]
 
-# 更新
+
 # 函数：更新FIB表项
 def updateFIB(G, node, next_node):
     total_load = 0.001
@@ -155,11 +165,12 @@ def updateFIB(G, node, next_node):
     total_loss = 0
     Len = len(G.nodes[node]['FIB'])
     for all_node in G.nodes[node]['FIB'].keys():
+        G.edges[node,all_node]['load'] = len(G.nodes[all_node]['PIT'])/overhead_max
         total_load += G.edges[node,all_node]['load']
         total_delay += G.edges[node,all_node]['delay']
         total_loss += G.edges[node,all_node]['loss']
 
-    edge = G.nodes[node,next_node]
+    edge = G.edges[node,next_node]
     G.nodes[node]['FIB'][next_node] = (alpha*(1-edge['load']/total_load) + beta*(1-edge['delay']/total_delay)
                                       + gamma*(1-edge['loss']/total_loss))/Len
     # G.nodes[node]['FIB'][next_node] = 1 - len(G.nodes[next_node]['PIT']) / overhead_max
@@ -168,19 +179,28 @@ def updateFIB(G, node, next_node):
 # 函数：producer沿着原路返回Data
 def sendData(G, interest, time, path, consumer):
     path1 = path.copy()        # 复制路径，避免后续操作更改原path
-    path1.remove(consumer)     # 去掉consumer
+    # path1.remove(consumer)     # 去掉consumer
     for node in path1:
         k = path1.index(node)  # 节点的索引值
         # 节点接收到返回Data的时间
-        receive_time = time + 0.5*(len(path1)-1-k)
-        if interest in G.nodes[node]['PIT'].keys():
-            # 如果节点的PIT表中已经记录了先前相同Data的返回时间，则比较取最小时间
-            if len(G.nodes[node]['PIT'][interest]) == 2:
-                if G.nodes[node]['PIT'][interest][1] > receive_time:
-                    G.nodes[node]['PIT'][interest][1] = receive_time
-            # 如果之前没有返回Data,则记录返回时间
-            else:
-                G.nodes[node]['PIT'][interest].append(receive_time)
+        receive_time = time
+        while k != len(path1)-1:
+            receive_time += G.edges[path1[k],path1[k+1]]['delay']
+            k += 1
+        # receive_time = time + 0.5*(len(path1)-1-k)
+        if node == consumer:
+            G.nodes[node]['Interest'][interest].append(receive_time)
+        else:
+            if interest in G.nodes[node]['PIT'].keys():
+                # 如果节点的PIT表中已经记录了先前相同Data的返回时间，则比较取最小时间
+                if len(G.nodes[node]['PIT'][interest]) == 2:
+                    if G.nodes[node]['PIT'][interest][1] > receive_time:
+                        G.nodes[node]['PIT'][interest][1] = receive_time
+                # 如果之前没有返回Data,则记录返回时间
+                else:
+                    G.nodes[node]['PIT'][interest].append(receive_time)
+
+
 
 
 # 函数：计算平均负载
@@ -194,16 +214,33 @@ def caculate_overhead(G, consumer, producer, overhead_max):
     return overhead_ratio
 
 
+# 函数：计算平均时延
+def caculate_delay(G, consumer):
+    round_time = []
+    for name in G.nodes[consumer]['Interest'].keys():
+        trip_time = G.nodes[consumer]['Interest'][name][1] - G.nodes[consumer]['Interest'][name][0]
+        round_time.append(trip_time)
+    aver_delay = sum(round_time) / len(round_time)
+    return aver_delay
+
 # 函数：作图
-def plot_result(N_packet_lists, overhead_ratios, filename):
-    plt.plot(N_packet_lists, overhead_ratios, 'bo-')
+def plot_result(times, overhead_ratios, aver_delays, filename):
+    plt.figure(figsize=(10,10))
+    plt.subplot(2,1,1)
+    plt.plot(times, overhead_ratios, 'bo-')
     # xticks = np.arange(0,20,1)
     # plt.xticks(xticks)
     plt.xlabel('time/(s)')
     plt.ylabel('overhead_ratio')
     plt.title(filename)
+
+    plt.subplot(2,1,2)
+    plt.plot(times, aver_delays, 'rs-')
+    plt.xlabel('time/(s)')
+    plt.ylabel('aver_delays')
+    plt.title(filename)
     plt.show()
 
 
-edges = [('A','B'),('A','C'),('B','D'),('B','E'),('C','E'),('C','F'),('D','G'),('E','G'),('F','G')]
-overhead_AC = ACO(edges, 'B', 'F')
+# edges = [('A','B'),('A','C'),('B','D'),('B','E'),('C','E'),('C','F'),('D','G'),('E','G'),('F','G')]
+# overhead_AC = ACO(edges, 'B', 'F')
