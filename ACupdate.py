@@ -147,7 +147,7 @@ def insertPIT(G, interest, time, node):
     else:
         G.nodes[node]['PIT'][interest] = [time + 0.5]
 
-
+# das
 # 函数：更新FIB表项
 def updateFIB(G, node, next_node):
     total_load = 0.001
