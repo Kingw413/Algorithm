@@ -5,11 +5,14 @@ import networkx as nx
 
 def ACO(edges, Consumer, Producer):
     # 全局化生存时间、最大负载、consumer、producer、拓扑图参数
-    global TTL, overhead_max, consumer, producer, G
+    global TTL, overhead_max, consumer, producer, G, alpha, beta, gamma
     TTL = 200
     overhead_max = 200
     consumer = Consumer
     producer = Producer
+    alpha = 0.7
+    beta = 0.2
+    gamma = 0.1
     # 初始化拓扑图中各个节点的表项
     G = initial(edges)
     # 计算全局路由,从而为每个节点生成FIB表
@@ -71,6 +74,11 @@ def initial(edges):
         G.nodes[node]['CS'] = []
         G.nodes[node]['PIT'] = {}
         G.nodes[node]['FIB'] = {}
+    # 随机生成各节点间链路的时延、丢失率
+    for edge in G.edges:
+        G.edges[edge]['load'] = 0
+        G.edges[edge]['delay'] = np.random.uniform(1, 5)
+        G.edges[edge]['loss'] = np.random.uniform(0.1, 0.5)
     return G
 
 
@@ -142,7 +150,19 @@ def insertPIT(G, interest, time, node):
 
 # 函数：更新FIB表项
 def updateFIB(G, node, next_node):
-    G.nodes[node]['FIB'][next_node] = 1 - len(G.nodes[next_node]['PIT']) / overhead_max
+    total_load = 0.001
+    total_delay = 0
+    total_loss = 0
+    Len = len(G.nodes[node]['FIB'])
+    for all_node in G.nodes[node]['FIB'].keys():
+        total_load += G.edges[node,all_node]['load']
+        total_delay += G.edges[node,all_node]['delay']
+        total_loss += G.edges[node,all_node]['loss']
+
+    edge = G.nodes[node,next_node]
+    G.nodes[node]['FIB'][next_node] = (alpha*(1-edge['load']/total_load) + beta*(1-edge['delay']/total_delay)
+                                      + gamma*(1-edge['loss']/total_loss))/Len
+    # G.nodes[node]['FIB'][next_node] = 1 - len(G.nodes[next_node]['PIT']) / overhead_max
 
 
 # 函数：producer沿着原路返回Data
@@ -185,5 +205,5 @@ def plot_result(N_packet_lists, overhead_ratios, filename):
     plt.show()
 
 
-# edges = [('A','B'),('A','C'),('B','D'),('B','E'),('C','E'),('C','F'),('D','G'),('E','G'),('F','G')]
-# overhead_AC = ACO(edges, 'B', 'F')
+edges = [('A','B'),('A','C'),('B','D'),('B','E'),('C','E'),('C','F'),('D','G'),('E','G'),('F','G')]
+overhead_AC = ACO(edges, 'B', 'F')
