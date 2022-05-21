@@ -86,7 +86,8 @@ def initial(edges,consumer):
     # 随机生成各节点间链路的时延、丢失率
     for edge in G.edges:
         G.edges[edge]['load'] = 0
-        G.edges[edge]['delay'] = np.random.uniform(0.001, 0.01)
+        G.edges[edge]['delay'] = 0.01
+        # G.edges[edge]['delay'] = np.random.uniform(0.001, 0.01)
         G.edges[edge]['loss'] = np.random.uniform(0.1, 0.5)
     return G
 
@@ -151,7 +152,7 @@ def insertPIT(G, interest, time, now_node, next_node):
     delay = G.edges[now_node,next_node]['delay']
     if interest in G.nodes[next_node]['PIT']:
         # 判断相同请求的时间先后，更新请求的最新时间
-        if G.nodes[next_node]['PIT'][interest][0] < time + delay:
+        if G.nodes[next_node]['PIT'][interest][0] > time + delay:
             G.nodes[next_node]['PIT'][interest][0] = time + delay
     # 如果没有相同请求，则添加新的PIT表项
     else:
@@ -189,7 +190,11 @@ def sendData(G, interest, time, path, consumer):
             k += 1
         # receive_time = time + 0.5*(len(path1)-1-k)
         if node == consumer:
-            G.nodes[node]['Interest'][interest].append(receive_time)
+            if len(G.nodes[node]['Interest'][interest]) == 2:
+                if G.nodes[node]['Interest'][interest][1] > receive_time:
+                    G.nodes[node]['Interest'][interest][1] = receive_time
+            else:
+                G.nodes[node]['Interest'][interest].append(receive_time)
         else:
             if interest in G.nodes[node]['PIT'].keys():
                 # 如果节点的PIT表中已经记录了先前相同Data的返回时间，则比较取最小时间
@@ -242,5 +247,5 @@ def plot_result(times, overhead_ratios, aver_delays, filename):
     plt.show()
 
 
-# edges = [('A','B'),('A','C'),('B','D'),('B','E'),('C','E'),('C','F'),('D','G'),('E','G'),('F','G')]
-# overhead_AC = ACO(edges, 'B', 'F')
+edges = [('A','B'),('A','C'),('B','D'),('B','E'),('C','E'),('C','F'),('D','G'),('E','G'),('F','G')]
+overhead_AC = ACO(edges, 'B', 'F')

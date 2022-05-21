@@ -3,7 +3,7 @@ import numpy as np
 import networkx as nx
 
 
-def ACO(edges, Consumer, Producer):
+def ACO(graph, Consumer, Producer):
     # 全局化生存时间、最大负载、consumer、producer、拓扑图参数
     global TTL, overhead_max, consumer, producer, G, alpha, beta, gamma
     TTL = 20
@@ -13,8 +13,9 @@ def ACO(edges, Consumer, Producer):
     alpha = 0.7
     beta = 0.2
     gamma = 0.1
+    G = graph
     # 初始化拓扑图中各个节点的表项
-    G = initial(edges,consumer)
+    # G = initial(edges,consumer)
     # 计算全局路由,从而为每个节点生成FIB表
     caculateRoute(G, consumer, producer)
     overhead_ratios = []
@@ -28,7 +29,7 @@ def ACO(edges, Consumer, Producer):
         time = i / 100  # 当前时间
         now_node = consumer  # 当前节点
         path = [consumer]  # 已经走过的节点路径
-        interest = 'HIT/' + str(np.random.randint(1000))  # 随机生成兴趣包
+        interest = 'HIT/' + str(i)  # 随机生成兴趣包
         G.nodes[consumer]['Interest'][interest] = [time]
         while now_node != producer:
             # 检查每个节点的PIT表，删除已经接收到返回Data的请求
@@ -86,7 +87,8 @@ def initial(edges,consumer):
     # 随机生成各节点间链路的时延、丢失率
     for edge in G.edges:
         G.edges[edge]['load'] = 0
-        G.edges[edge]['delay'] = np.random.uniform(0.001, 0.01)
+        G.edges[edge]['delay'] = 0.01
+        # G.edges[edge]['delay'] = np.random.uniform(0.001, 0.01)
         G.edges[edge]['loss'] = np.random.uniform(0.1, 0.5)
     return G
 
@@ -151,7 +153,7 @@ def insertPIT(G, interest, time, now_node, next_node):
     delay = G.edges[now_node,next_node]['delay']
     if interest in G.nodes[next_node]['PIT']:
         # 判断相同请求的时间先后，更新请求的最新时间
-        if G.nodes[next_node]['PIT'][interest][0] < time + delay:
+        if G.nodes[next_node]['PIT'][interest][0] > time + delay:
             G.nodes[next_node]['PIT'][interest][0] = time + delay
     # 如果没有相同请求，则添加新的PIT表项
     else:
@@ -189,7 +191,11 @@ def sendData(G, interest, time, path, consumer):
             k += 1
         # receive_time = time + 0.5*(len(path1)-1-k)
         if node == consumer:
-            G.nodes[node]['Interest'][interest].append(receive_time)
+            if len(G.nodes[node]['Interest'][interest]) == 2:
+                if G.nodes[node]['Interest'][interest][1] > receive_time:
+                    G.nodes[node]['Interest'][interest][1] = receive_time
+            else:
+                G.nodes[node]['Interest'][interest].append(receive_time)
         else:
             if interest in G.nodes[node]['PIT'].keys():
                 # 如果节点的PIT表中已经记录了先前相同Data的返回时间，则比较取最小时间
@@ -199,8 +205,6 @@ def sendData(G, interest, time, path, consumer):
                 # 如果之前没有返回Data,则记录返回时间
                 else:
                     G.nodes[node]['PIT'][interest].append(receive_time)
-
-
 
 
 # 函数：计算平均负载
@@ -242,16 +246,16 @@ def plot_result(times, overhead_ratios, aver_delays, filename):
     plt.show()
 
 
-
-def BC(edges, Consumer, Producer):
+def BC(graph, Consumer, Producer):
     # 全局化生存时间、最大负载、consumer、producer、拓扑图参数
     global TTL, overhead_max, consumer, producer, G
     TTL = 20
     overhead_max = 200
     consumer = Consumer
     producer = Producer
+    G = graph
     # 初始化拓扑图中各个节点的表项
-    G = initial(edges, consumer)
+    # G = initial(edges, consumer)
     # 计算全局路由,从而为每个节点生成FIB表
     caculateRoute(G, consumer, producer)
     overhead_ratios = []
@@ -262,28 +266,28 @@ def BC(edges, Consumer, Producer):
     #for N_packet in N_packet_lists:
     for i in range(N_packet):
         time = i/100  # 当前时间
-        interest = 'HIT/' + str(np.random.randint(1000))  # 随机生成兴趣包
+        interest = 'HIT/' + str(i)  # 随机生成兴趣包
         G.nodes[consumer]['Interest'][interest] = [time]
         for node in G.nodes:
             receiveData(G, node, time)
         # 找出所有的简单路径，再分别操作
         for path in nx.all_simple_paths(G, consumer, producer):
+            now_time = time
             # 对路径上的每个节点进行更新
             now_node = consumer
             for k in range(1, len(path)):
                 next_node = path[k]
                 for node in G.nodes:
-                    receiveData(G, node, time)
+                    receiveData(G, node, now_time)
                     # 删除超时的PIT表项
-                    del_expiredPIT(G, node, time, TTL)
+                    del_expiredPIT(G, node, now_time, TTL)
                     # 判断PIT是否超载，如果是做出相应操作
                     isoverload(G, node, overhead_max)
                 # 添加新的PIT表项
-                insertPIT(G, interest, time, now_node, next_node)
+                insertPIT(G, interest, now_time, now_node, next_node)
                 now_node = next_node
-                time = G.nodes[next_node]['PIT'][interest][0]
-            sendData(G, interest, time, path, consumer)
-        # 计算平均负载
+                now_time = G.nodes[next_node]['PIT'][interest][0]
+            sendData(G, interest, now_time, path, consumer)
         if i % 100 == 0:
             # 计算平均负载
             overhead_ratio = caculate_overhead(G, consumer, producer, overhead_max)
@@ -297,9 +301,11 @@ def BC(edges, Consumer, Producer):
 
 
 edges = [('A','B'),('A','C'),('B','D'),('B','E'),('C','E'),('C','F'),('D','G'),('E','G'),('F','G')]
-overhead_AC, delay_AC= ACO(edges, 'B', 'F')
+G = initial(edges, 'B')
+G1 = G.copy()
+overhead_AC, delay_AC= ACO(G, 'B', 'F')
 #print(overhead_AC)
-overhead_BC, delay_BC = BC(edges, 'B','F')
+overhead_BC, delay_BC = BC(G1, 'B','F')
 x = [x for x in range(20)]
 # x = [10+10*k for k in range(15)]
 plt.figure(figsize=(10,10))
