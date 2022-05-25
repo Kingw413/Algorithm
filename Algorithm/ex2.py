@@ -64,10 +64,9 @@ def ACO(graph, Consumer, Producer):
             aver_delay = caculate_delay(G, consumer)
             aver_delays.append(aver_delay)
 
-
     # 作图
     plot_result(times, overhead_ratios, aver_delays, 'AC')
-    return overhead_ratios,aver_delays
+    return overhead_ratios, aver_delays
 
 
 # 函数：初始化各个节点的CS、PIT、FIB表
@@ -110,10 +109,12 @@ def choose_next(G, node, path):
     # 找到该请求已经转发过的上游节点，避免环路
     passed_nodes = [x for x in node_lists.keys() if x in path]
     [node_lists.pop(x) for x in passed_nodes]
-    if 'F' in node_lists:
-        next_node = 'F'
-    else:
-        next_node = max(node_lists, key=lambda k: node_lists[k])
+    next_node = max(node_lists, key=lambda k: node_lists[k])
+
+    # if 'F' in node_lists:
+    #     next_node = 'F'
+    # else:
+    #     next_node = max(node_lists, key=lambda k: node_lists[k])
     path.append(next_node)
     return next_node, path
 
@@ -225,13 +226,13 @@ def caculate_delay(G, consumer):
         trip_time = G.nodes[consumer]['Interest'][name][1] - G.nodes[consumer]['Interest'][name][0]
         round_time.append(trip_time)
     aver_delay = sum(round_time) / len(round_time)
-    return aver_delay
+    return aver_delay*1000
 
 # 函数：作图
 def plot_result(times, overhead_ratios, aver_delays, filename):
     plt.figure(figsize=(10,10))
     plt.subplot(2,1,1)
-    plt.plot(times, overhead_ratios, 'bo-')
+    plt.plot(times, overhead_ratios, 'go-')
     # xticks = np.arange(0,20,1)
     # plt.xticks(xticks)
     plt.xlabel('time/(s)')
@@ -240,8 +241,9 @@ def plot_result(times, overhead_ratios, aver_delays, filename):
 
     plt.subplot(2,1,2)
     plt.plot(times, aver_delays, 'rs-')
+    #plt.ylim(55,65)
     plt.xlabel('time/(s)')
-    plt.ylabel('aver_delays')
+    plt.ylabel('aver_delays(ms)')
     plt.title(filename)
     plt.show()
 
@@ -300,8 +302,16 @@ def BC(graph, Consumer, Producer):
     return overhead_ratios,aver_delays
 
 
-edges = [('A','B'),('A','C'),('B','D'),('B','E'),('C','E'),('C','F'),('D','G'),('E','G'),('F','G')]
-G = initial(edges, 'B')
+# edges = [('A','B'),('A','C'),('B','D'),('B','E'),('C','E'),('C','F'),('D','G'),('E','G'),('F','G')]
+# G = initial(edges, 'B')
+n = ['A','B','C','D','E','F']
+edges = []
+for i in range(6):
+    for j in range(i+1,6):
+        edges.append((n[i],n[j]))
+G = initial(edges,'B')
+nx.draw(G,with_labels=True)
+plt.show()
 G1 = G.copy()
 overhead_AC, delay_AC= ACO(G, 'B', 'F')
 #print(overhead_AC)
@@ -322,6 +332,7 @@ plt.plot(x,delay_AC,'ro-')
 plt.plot(x,delay_BC,'gs-')
 plt.xlabel('time(s)')
 plt.ylabel('aver_delay')
+# plt.ylim(5,65)
 plt.title('AC VS BC')
 plt.legend(['AC','BC'])
 plt.show()

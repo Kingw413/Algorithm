@@ -1,23 +1,18 @@
 import numpy as np
+import random
 import matplotlib.pyplot as plt
 
-#函数：初始化生成城市个数、距离矩阵、信息素矩阵、期望矩阵，并设为全局变量
-def initial(cities):
-    global N_city
-    N_city = cities.shape[0]
-    global DistMat, pheromone_tab, expect_tab
-    DistMat = getDistMat(cities)
-    pheromone_tab = np.ones([N_city, N_city])
-    expect_tab = 1 / (DistMat + np.diag([1e10] * N_city))
-    return N_city, DistMat, pheromone_tab, expect_tab
+
 
 
 #函数：求解最终路径与每次迭代的最短路径长度
 def ASsolve(cities,N_ant,N_iter, alpha,beta,rho,Q):
     iter_times = 0
     N_city, DistMat, pheromone_tab, expect_tab = initial(cities)
+    global averageLength
     global shortestLength
     global shortestPath
+    averageLength = np.zeros(N_iter)
     shortestLength = np.zeros(N_iter)                     #初始化每次迭代的最短路径长度
     shortestPath = np.zeros(N_city).astype(int)           #初始化每次迭代的最短路径
     while iter_times < N_iter:
@@ -31,7 +26,7 @@ def ASsolve(cities,N_ant,N_iter, alpha,beta,rho,Q):
             unpassed.remove(passing)                      #将已经经过的城市从未访问城市表中移除
             for j in range(1, N_city):
                 #计算到未访问城市表中各个城市的概率
-                prob = cacuprob(passing, unpassed,alpha,beta)
+                prob = cacuprob(passing, unpassed, alpha, beta)
                 #依据概率按轮盘法选择下一个城市
                 next_city = choonext(prob, unpassed)
                 path_tab[i][j] = next_city                #将下一步的城市添加到路径表中
@@ -43,10 +38,23 @@ def ASsolve(cities,N_ant,N_iter, alpha,beta,rho,Q):
         updatepho(path_tab,rho,Q)
         #比较决定最短路径及其长度
         shortest(iter_times, length, path_tab)
+        #计算平均路径长度
+        averageLength[iter_times] = length.mean()
         iter_times += 1
     #作图
-    plotresult('AS',cities, shortestLength, shortestPath)
+    plotresult('AS',cities, averageLength, shortestLength, shortestPath)
     return shortestLength, shortestPath
+
+
+#函数：初始化生成城市个数、距离矩阵、信息素矩阵、期望矩阵，并设为全局变量
+def initial(cities):
+    global N_city
+    N_city = cities.shape[0]
+    global DistMat, pheromone_tab, expect_tab
+    DistMat = getDistMat(cities)
+    pheromone_tab = np.ones([N_city, N_city])
+    expect_tab = 1.0 / (DistMat + np.diag([1e10] * N_city))
+    return N_city, DistMat, pheromone_tab, expect_tab
 
 
 #函数：计算距离矩阵
@@ -120,17 +128,24 @@ def shortest(iter_times, length, path_tab):
 
 
 #函数：作出每次迭代的路径长度以及最终的路径
-def plotresult(file_name, cities, shortestLength, shortestPath):
+def plotresult(file_name, cities, averageLength, shortestLength, shortestPath):
     #输出结果
-    print('(%s)shortest length: ' % file_name, shortestLength[-1])
+    print('(%s)shortest length: ' % file_name, shortestLength)
+    print('(%s)last shortest length: ' % file_name, shortestLength[-1])
     print('(%s)final path：' % file_name, shortestPath)
     # 图1：随着迭代次数最短路径长度的变化
-    plt.figure()
-    plt.plot(shortestLength)
+    plt.figure(figsize=(12,10))
+    plt.subplot(2,1,1)
+    plt.plot(averageLength, 'k>-')
+    plt.xlabel('iter_times')
+    plt.ylabel('average Length')
+    plt.title('(%s)average length: %f' % (file_name, shortestLength[-1]))
+
+    plt.subplot(2,1,2)
+    plt.plot(shortestLength,'b>-')
     plt.xlabel('iter_times')
     plt.ylabel('shortest Length')
     plt.title('(%s)shortest length: %f' % (file_name, shortestLength[-1]))
-    #plt.show()
 
     # 图2：迭代完成后的最短路径
     plt.figure()
@@ -152,3 +167,19 @@ def plotresult(file_name, cities, shortestLength, shortestPath):
     plt.ylabel('y')
     plt.title('(%s)shortest path' % file_name)
     plt.show()
+
+
+cities = np.loadtxt('coordinates.txt')
+N_ant = 100 #蚂蚁个数
+N_iter  = 100
+alpha = 2 #信息素重要程度
+beta = 2 #启发因子重要程度
+rho = 0.1 #信息素的挥发速度
+Q = 1 #完成率
+shortestLength, shortestPath = ASsolve(cities,N_ant,N_iter,alpha,beta,rho,Q)
+Path_coordinates = []
+for city_num in shortestPath:
+    Path_coordinates.append(cities[city_num])
+Path_coordinates = np.array(Path_coordinates)
+np.savetxt('cities.txt',cities,fmt="%d")
+np.savetxt('path.txt',Path_coordinates,fmt="%d")

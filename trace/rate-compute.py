@@ -11,7 +11,8 @@ def overhead_compute(filename):
             # 得到对应的时间，格式为字符串
             time = line.split()[0].split('s')[0]
             # 将时间向下取整，即每隔一秒统计一次
-            overhead_file.append(int(float(time)))
+            if float(time)>0:
+                overhead_file.append(int(float(time)))
         # 下一次循环
         line = f.readline()
     f.close()

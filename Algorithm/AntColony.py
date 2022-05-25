@@ -1,17 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-cities = np.array([[565.0, 575.0], [25.0, 185.0], [345.0, 750.0], [945.0, 685.0], [845.0, 655.0],
-                        [880.0, 660.0], [25.0, 230.0], [525.0, 1000.0], [580.0, 1175.0], [650.0, 1130.0],
-                        [1605.0, 620.0], [1220.0, 580.0], [1465.0, 200.0], [1530.0, 5.0], [845.0, 680.0],
-                        [725.0, 370.0], [145.0, 665.0], [415.0, 635.0], [510.0, 875.0], [560.0, 365.0],
-                        [300.0, 465.0], [520.0, 585.0], [480.0, 415.0], [835.0, 625.0], [975.0, 580.0],
-                        [1215.0, 245.0], [1320.0, 315.0], [1250.0, 400.0], [660.0, 180.0], [410.0, 250.0],
-                        [420.0, 555.0], [575.0, 665.0], [1150.0, 1160.0], [700.0, 580.0], [685.0, 595.0],
-                        [685.0, 610.0], [770.0, 610.0], [795.0, 645.0], [720.0, 635.0], [760.0, 650.0],
-                        [475.0, 960.0], [95.0, 260.0], [875.0, 920.0], [700.0, 500.0], [555.0, 815.0],
-                        [830.0, 485.0], [1170.0, 65.0], [830.0, 610.0], [605.0, 625.0], [595.0, 360.0]])
-
+cities = np.loadtxt('coordinates.txt')
 #函数：计算各城市间的距离矩阵
 def getDistMat(cities):
     #城市个数
@@ -32,11 +22,11 @@ def distributeAnt(N_ant, N_city):
         passing = np.append(passing, np.random.permutation(range(N_city))[:N_ant - N_city])
     return passing
 
-N_ant = 40 #蚂蚁个数
+N_ant = 100 #蚂蚁个数
 N_city = cities.shape[0] #城市个数
-alpha = 1 #信息素重要程度
-beta = 5 #启发因子重要程度
-rho = 0.5 #信息素的挥发速度
+alpha = 2 #信息素重要程度
+beta = 2 #启发因子重要程度
+rho = 0.2 #信息素的挥发速度
 Q = 1 #完成率
 
 iter = 0 #迭代初始
@@ -85,10 +75,10 @@ while iter<itermax:
 
     #更新信息素
     updatephero_tab = np.zeros([N_city, N_city])
-    for ant_cities in path_tab:
-        for k in range(N_city-1):
-            updatephero_tab[ant_cities[k]][ant_cities[k + 1]] += Q / DistMat[ant_cities[k]][ant_cities[k + 1]]
-        updatephero_tab[ant_cities[k + 1]][ant_cities[0]] += Q / DistMat[ant_cities[k + 1]][ant_cities[0]]
+    for i in range(N_city):
+        for j in range(N_city-1):
+            updatephero_tab[path_tab[i,j],path_tab[i,j+ 1]] += Q / DistMat[path_tab[i,j],path_tab[i,j+ 1]]
+        updatephero_tab[path_tab[i,j+1],path_tab[i,0]] += Q / DistMat[path_tab[i,j+1],path_tab[i,0]]
 
     #信息素更新
     pheromone_tab = (1-rho) * pheromone_tab + updatephero_tab
@@ -108,34 +98,34 @@ while iter<itermax:
     iter += 1
 
 #作图
-fig, axes = plt.subplots(nrows=2, ncols=1)
-axes[0].plot(length_aver)
+fig, axes = plt.subplots(nrows=2, ncols=1,figsize=(12,10))
+axes[0].plot(length_aver,'k*-')
 axes[0].set_title('Average Length')
 axes[0].set_xlabel('iter times')
 
-axes[1].plot(length_best)
+axes[1].plot(length_best,'k<-')
 axes[1].set_title('Shortest Length')
 axes[1].set_xlabel('iter times')
-
+plt.show()
 bestpath = path_best[-1]
-fig2 = plt.figure(2)
+# fig2 = plt.figure(2)
 # plt.plot(cities[:, 0], cities[:, 1], 'r.')
 # plt.xlim([-100, 2000])
 # # x范围
 # plt.ylim([-100, 1500])
 # # y范围
 
-for i in range(N_city - 1):
-    # 按坐标绘出最佳两两城市间路径
-    m, n = int(bestpath[i]), int(bestpath[i + 1])
-    plt.plot([cities[m][0], cities[n][0]], [cities[m][1], cities[n][1]], 'bo-')
+# for i in range(N_city - 1):
+#     # 按坐标绘出最佳两两城市间路径
+#     m, n = int(bestpath[i]), int(bestpath[i + 1])
+#     plt.plot([cities[m][0], cities[n][0]], [cities[m][1], cities[n][1]], 'bo-')
+#
+# plt.plot([cities[int(bestpath[0])][0], cities[int(bestpath[-1])][0]],
+#          [cities[int(bestpath[0])][1], cities[int(bestpath[-1])][1]], 'r')
 
-plt.plot([cities[int(bestpath[0])][0], cities[int(bestpath[-1])][0]],
-         [cities[int(bestpath[0])][1], cities[int(bestpath[-1])][1]], 'r')
-
-ax = plt.gca()
-ax.set_title("Best Path")
-ax.set_xlabel('X_axis')
-ax.set_ylabel('Y_axis')
-plt.show()
+# ax = plt.gca()
+# ax.set_title("Best Path")
+# ax.set_xlabel('X_axis')
+# ax.set_ylabel('Y_axis')
+# plt.show()
 
