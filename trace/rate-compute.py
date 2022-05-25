@@ -31,11 +31,19 @@ def overhead_compute(filename):
     for key, value in sorted(overhead.items()):
         result_file.write(str(key) +' '+str(value)+'\n')
     result_file.close()
+    return list(overhead.values())[:20]
 
 
 import os
-for filename in os.listdir(r'./data/Zipf'):
-    overhead_compute(filename)
+import pandas as pd
+import re
+All_zipf_overhead = pd.DataFrame()
+All_zipf_overhead['time'] = list(range(1,21))
+for filename in os.listdir(r'./data/Zipf/'):
+    overhead = overhead_compute(filename)
+    s = float(re.search('\d+\.?\d*',filename).group())
+    All_zipf_overhead['\'s\'=%.2f'%s] = overhead
+    All_zipf_overhead.to_csv('Zipf_overhead.csv',index=False,sep='\t',float_format='%.2f')
 
 # import matplotlib.pyplot as plt
 # import numpy as np

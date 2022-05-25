@@ -1,5 +1,6 @@
 def overhead_compute(filename):
     import pandas as pd
+    import re
     # 打开文件
     f = open('./data/Cbr/'+ filename, "r")
     overhead_file = []
@@ -25,7 +26,7 @@ def overhead_compute(filename):
         for j in range(i):
             overhead[i] += packet_counts[j]*8*1024/(i+1)/1000
     # 创建文件存储输出结果
-    result_filename = './results/Cbr'+ filename.split(".log")[0] + "_overhead.txt"
+    result_filename = './results/Cbr-'+ filename.split(".log")[0] + "_overhead.txt"
     result_file = open(result_filename, "w")
     # 将结果数据写入文件
     for key, value in sorted(overhead.items()):
@@ -34,6 +35,10 @@ def overhead_compute(filename):
 
 
 import os
+import pandas as pd
+import re
+All_zipf_overhead = pd.DataFrame()
+All_zipf_overhead['time'] = list(range(1,31))
 for filename in os.listdir(r'./data/Cbr/'):
     overhead_compute(filename)
 
