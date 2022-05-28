@@ -4,19 +4,19 @@ import networkx as nx
 import random
 
 
-def ACO(graph, Consumer, Producer):
+def ACO(Graph, Consumer, Producer):
     # 全局化生存时间、最大负载、consumer、producer、拓扑图参数
     global TTL, load_max, consumer, producer, alpha, beta
     TTL = 200
-    load_max = 200
+    load_max = 100
     consumer = Consumer
     producer = Producer
     alpha = 0.5
     beta = 0.5
     gamma = 0
-    G = graph
+    G = Graph
     # 初始化拓扑图中各个节点的表项
-    G = initial(edges)
+    # G = initial(edges)
     # 计算全局路由,从而为每个节点生成FIB表
     caculateRoute(G, consumer, producer)
     load_ratios = []
@@ -62,26 +62,28 @@ def ACO(graph, Consumer, Producer):
         # if i> 0 and i%10 == 0:
         #     hello_update(G, time)
 
-        if (time /0.1)%1 == 0:
+        if i%10 == 0:
             # 计算平均负载
             load_ratio = caculate_load(G, consumer, producer, load_max)
             load_ratios.append(load_ratio)
             aver_delay = caculate_delay(G, consumer)
-            aver_delays.append(aver_delay)
+            aver_delays.append(round(aver_delay,3))
             overhead = 0
             for node in G.nodes:
                 for packet in G.nodes[node]['Packet']:
                     if packet[1] <= time:
                         overhead += 1
             aver_overhead = round(overhead*1024*8/time/1000,3)
+            #print(aver_overhead)
             overheads.append(aver_overhead)
             #over_head = caculate_overhead(G,i/10)
             #overheads.append(over_head/(i/10))
 
     # 作图
     # plot_result(times, load_ratios, aver_delays, 'AC')
-    print('AC: ', overheads)
-    return load_ratios, aver_delays, overheads
+    #print('L:', len(overheads))
+    print('AC_delay: ', aver_delays)
+    return  aver_delays
 
 
 # 函数：初始化各个节点的CS、PIT、FIB表
@@ -291,6 +293,6 @@ def plot_result(times, overhead_ratios, aver_delays, filename):
     plt.title(filename)
     plt.show()
 
-
-edges = [('A','B'),('A','C'),('B','D'),('B','E'),('C','E'),('C','F'),('D','G'),('E','G'),('F','G')]
-overhead_AC = ACO(edges, 'B', 'F')
+#
+# edges = [('A','B'),('A','C'),('B','D'),('B','E'),('C','E'),('C','F'),('D','G'),('E','G'),('F','G')]
+# overhead_AC = ACO(edges, 'B', 'F')
