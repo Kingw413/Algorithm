@@ -3,8 +3,6 @@ import random
 import matplotlib.pyplot as plt
 
 
-
-
 #函数：求解最终路径与每次迭代的最短路径长度
 def ASsolve(cities,N_ant,N_iter, alpha,beta,rho,Q):
     iter_times = 0
@@ -42,8 +40,8 @@ def ASsolve(cities,N_ant,N_iter, alpha,beta,rho,Q):
         averageLength[iter_times] = length.mean()
         iter_times += 1
     #作图
-    plotresult('AS',cities, averageLength, shortestLength, shortestPath)
-    return shortestLength, shortestPath
+    # plotresult('AS',cities, averageLength, shortestLength, shortestPath)
+    return averageLength, shortestLength
 
 
 #函数：初始化生成城市个数、距离矩阵、信息素矩阵、期望矩阵，并设为全局变量
@@ -133,14 +131,14 @@ def plotresult(file_name, cities, averageLength, shortestLength, shortestPath):
     print('(%s)shortest length: ' % file_name, shortestLength)
     print('(%s)last shortest length: ' % file_name, shortestLength[-1])
     print('(%s)final path：' % file_name, shortestPath)
-    # 图1：随着迭代次数最短路径长度的变化
+    # 图1-1：随着迭代次数平均路径长度的变化
     plt.figure(figsize=(12,10))
     plt.subplot(2,1,1)
     plt.plot(averageLength, 'k>-')
     plt.xlabel('iter_times')
     plt.ylabel('average Length')
-    plt.title('(%s)average length: %f' % (file_name, shortestLength[-1]))
-
+    plt.title('(%s)average length: %f' % (file_name, averageLength[-1]))
+    # 图1-2 随着迭代次数最短路径长度的变化
     plt.subplot(2,1,2)
     plt.plot(shortestLength,'b>-')
     plt.xlabel('iter_times')
@@ -172,14 +170,70 @@ def plotresult(file_name, cities, averageLength, shortestLength, shortestPath):
 cities = np.loadtxt('coordinates.txt')
 N_ant = 100 #蚂蚁个数
 N_iter  = 100
-alpha = 2 #信息素重要程度
-beta = 2 #启发因子重要程度
-rho = 0.1 #信息素的挥发速度
+# alpha = [1,2,3,4] #信息素重要程度
+alpha = 1
+beta = [1,2,3,4] #启发因子重要程度
+# beta = 1
+rho = 0.2 #信息素的挥发速度
+# rho = 0.1
 Q = 1 #完成率
-shortestLength, shortestPath = ASsolve(cities,N_ant,N_iter,alpha,beta,rho,Q)
-Path_coordinates = []
-for city_num in shortestPath:
-    Path_coordinates.append(cities[city_num])
-Path_coordinates = np.array(Path_coordinates)
-np.savetxt('cities.txt',cities,fmt="%d")
-np.savetxt('path.txt',Path_coordinates,fmt="%d")
+# iter_times = list(range(1,101))
+aver_Lengths = []
+shortest_Lengths = []
+for i in range(4):
+    averLength, shortestLength= ASsolve(cities, N_ant, N_iter, alpha, beta[i], rho, Q)
+    aver_Lengths.append(averLength)
+    shortest_Lengths.append(shortestLength)
+
+with open('beta_aver_Lengths.csv','w',encoding='utf-8-sig') as file:
+    file.write('迭代次数\tbeta=%.2f\tbeta=%.2f\tbeta=%.2f\tbeta=%.2f\n'%(beta[0],beta[1],beta[2],beta[3]))
+    for i in range(len(aver_Lengths[0])):
+        file.write(str(i + 1) + '\t')
+        file.write(str(round(aver_Lengths[0][i],2))+'\t')
+        file.write(str(round(aver_Lengths[1][i],2))+'\t')
+        file.write(str(round(aver_Lengths[2][i],2))+'\t')
+        file.write(str(round(aver_Lengths[3][i],2)))
+        file.write('\n')
+
+with open('beta_shortest_Lengths.csv','w',encoding='utf-8-sig') as file:
+    file.write('迭代次数\t最短长度\n')
+    for i in range(len(shortest_Lengths[0])):
+        file.write(str(i + 1) + '\t')
+        file.write(str(round(shortest_Lengths[0][i],2))+'\t')
+        file.write(str(round(shortest_Lengths[1][i],2))+'\t')
+        file.write(str(round(shortest_Lengths[2][i],2))+'\t')
+        file.write(str(round(shortest_Lengths[3][i],2)))
+        file.write('\n')
+
+plt.figure(1,figsize=(12,10))
+plt.plot(aver_Lengths[0],label = r'$\beta$ = %.2f'%beta[0])
+plt.plot(aver_Lengths[1],label = r'$\beta$ = %.2f'%beta[1])
+plt.plot(aver_Lengths[2],label = r'$\beta$ = %.2f'%beta[2])
+plt.plot(aver_Lengths[3],label = r'$\beta$ = %.2f'%beta[3])
+plt.legend()
+plt.xlabel('iter_times')
+plt.ylabel('average Length')
+plt.title('aver_Lengths')
+# plt.legend(r'$\alpha$ = %f'%alpha[i])
+
+plt.figure(2,figsize=(12,10))
+plt.plot(shortest_Lengths[0],label = r'$\beta$ = %.2f'%beta[0])
+plt.plot(shortest_Lengths[1],label = r'$\beta$ = %.2f'%beta[1])
+plt.plot(shortest_Lengths[2],label = r'$\beta$ = %.2f'%beta[2])
+plt.plot(shortest_Lengths[3],label = r'$\beta$ = %.2f'%beta[3])
+plt.legend()
+plt.xlabel('iter_times')
+plt.ylabel('shortest Length')
+plt.title('shortest_Lengths')
+plt.show()
+
+# shortestLength, shortestPath = ASsolve(cities,N_ant,N_iter,alpha,beta,rho,Q)
+# Path_coordinates = []
+# for city_num in shortestPath:
+#     Path_coordinates.append(cities[city_num])
+# Path_coordinates = np.array(Path_coordinates)
+
+
+
+# np.savetxt('cities.txt',cities,fmt="%d")
+# np.savetxt('path.txt',Path_coordinates,fmt="%d")
